@@ -37,7 +37,7 @@ class JobInMyActivity : ComponentActivity() {
 fun JobInMyScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.background(BrandPrimary).statusBarsPadding()) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.primary).statusBarsPadding()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -79,7 +79,7 @@ fun JobInMyScreen(onBack: () -> Unit) {
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).background(ScreenBg),
+            modifier = Modifier.fillMaxSize().padding(innerPadding).background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

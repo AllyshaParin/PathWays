@@ -41,13 +41,21 @@ fun PartTimeScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Career Collection", color = Color.White, fontSize = 18.sp) },
+                title = { Text("Career Collection", color = MaterialTheme.colorScheme.onPrimary, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = BrandPrimary)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { innerPadding ->
@@ -55,7 +63,7 @@ fun PartTimeScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(ScreenBg),
+                .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -103,7 +111,7 @@ fun PartTimeJobCard() {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFFE0F2F1)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Business, null, tint = BrandPrimary)
+                    Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.surface)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {

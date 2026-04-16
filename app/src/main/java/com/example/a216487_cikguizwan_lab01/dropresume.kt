@@ -47,7 +47,7 @@ fun DropResumeScreen(onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = BrandPrimary)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { innerPadding ->
