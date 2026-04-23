@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,10 +18,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 
 class NaviProfileActivity : ComponentActivity() {
@@ -31,41 +30,28 @@ class NaviProfileActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             A216487_CikguIzwan_Lab01Theme {
-                ProfileScreenWithNav()
+                val navController = androidx.navigation.compose.rememberNavController()
+                val profileViewModel: ProfileViewModel =
+                    androidx.lifecycle.viewmodel.compose.viewModel()
+
+                ProfileScreenWithNav(
+                    navController = navController,
+                    viewModel = profileViewModel
+                )
             }
         }
     }
 }
 
 @Composable
-fun ProfileScreenWithNav() {
+fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewModel) {
+    val profileData = viewModel.uiState.value
     val context = LocalContext.current
-    val selectedTab = "Profile"
-
-    Scaffold(
-        bottomBar = {
-            BottomNavBar(
-                selectedTab = selectedTab,
-                onTabSelected = { label ->
-                    when (label) {
-                        "Home" -> {
-                            val intent = Intent(context, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                            context.startActivity(intent)
-                        }
-                        "Chat" -> context.startActivity(Intent(context, NaviChatActivity::class.java))
-                        "My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
-                        "Company" -> { /* Navigate to Company if activity exists */ }
-                        "Profile" -> { /* Already here */ }
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+    //val selectedTab = "Profile"
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                //.padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -77,55 +63,71 @@ fun ProfileScreenWithNav() {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Profile Image Placeholder
                         Box(modifier = Modifier.size(80.dp)) {
                             Surface(
                                 shape = CircleShape,
-                                modifier = Modifier.size(80.dp).border(2.dp, Color.White, CircleShape),
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .border(2.dp, Color.White, CircleShape),
                                 color = MaterialTheme.colorScheme.surfaceVariant
                             ) {
                                 Icon(Icons.Default.Person, null, modifier = Modifier.padding(16.dp), tint = MaterialTheme.colorScheme.primary)
                             }
-                            // Edit Icon
+
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surface,
-                                modifier = Modifier.size(24.dp).align(Alignment.TopEnd)
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .align(Alignment.TopEnd)
+                                    .clickable { navController.navigate("profile_form")}
                             ) {
                                 Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(4.dp))
                             }
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "NURALLYSHA AYUNI BINTI SHAPARIN",
+                            /*Text(
+                                text = profileData.name.ifEmpty { "No Name Set" },
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("+60195239583", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                                Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(14.dp).padding(start = 4.dp))
+                                Text(profileData.phone.ifEmpty { "No Phone" }, color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
+                                Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier
+                                    .size(14.dp)
+                                    .padding(start = 4.dp))
+                            }*/
+                            val combinedDisplayName = if (profileData.name.isEmpty() && profileData.phone.isEmpty()) {
+                                "No Name Set"
+                            } else {
+                                "${profileData.name}  ${profileData.phone}"
                             }
+
+                            Text(
+                                text = combinedDisplayName,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("nurallyshaayuni@gmail.com", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                                Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(14.dp).padding(start = 4.dp))
+                                Text(profileData.email.ifEmpty { "No Email" }, color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
+                                Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier
+                                    .size(14.dp)
+                                    .padding(start = 4.dp))
                             }
                         }
                     }
-
                     Spacer(Modifier.height(24.dp))
-
-                    // Action Buttons
                     ProfileHeaderButton("Get Manager's Endorsement", Icons.Default.Shield)
                     Spacer(Modifier.height(8.dp))
                     ProfileHeaderButton("My Public Resume", Icons.Default.Description)
                 }
             }
-
-            // --- Content Body ---
+// --- Content Body ---
             Column(modifier = Modifier.padding(16.dp)) {
-                // Task 2: Profile Progress Card
+// Task 2: Profile Progress Card
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
@@ -134,7 +136,6 @@ fun ProfileScreenWithNav() {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Your Profile Progress", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text("Unlock Direct Chat with Employers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Text("99%", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -142,7 +143,10 @@ fun ProfileScreenWithNav() {
                         }
                         LinearProgressIndicator(
                             progress = { 0.99f },
-                            modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape),
                             color = Color(0xFF4CAF50),
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -153,10 +157,8 @@ fun ProfileScreenWithNav() {
                         }
                     }
                 }
-
                 Spacer(Modifier.height(16.dp))
-
-                // Task 2: Wallet Card
+// Task 2: Wallet Card
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
@@ -165,12 +167,12 @@ fun ProfileScreenWithNav() {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Maukerja Wallet", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Icon(Icons.Default.HelpOutline, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp).padding(start = 4.dp))
+                            Icon(Icons.Default.HelpOutline, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier
+                                .size(16.dp)
+                                .padding(start = 4.dp))
                         }
                         Text("(( • )) PING 3/10", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-
                         Spacer(Modifier.height(16.dp))
-
                         Button(
                             onClick = {},
                             modifier = Modifier.fillMaxWidth(),
@@ -186,7 +188,7 @@ fun ProfileScreenWithNav() {
             }
         }
     }
-}
+
 
 @Composable
 fun ProfileHeaderButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector?) {
@@ -209,6 +211,11 @@ fun ProfileHeaderButton(text: String, icon: androidx.compose.ui.graphics.vector.
 @Composable
 fun ProfileScreenPreview() {
     A216487_CikguIzwan_Lab01Theme {
-        ProfileScreenWithNav()
+        val mockNavController = androidx.navigation.compose.rememberNavController()
+        val mockViewModel : ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+        ProfileScreenWithNav(
+            navController = mockNavController,
+            viewModel = mockViewModel
+        )
     }
 }

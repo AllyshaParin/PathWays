@@ -23,6 +23,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 import kotlinx.coroutines.launch
 
@@ -42,6 +46,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigator() {
     val context = LocalContext.current
+    val navController = rememberNavController()
+    val profileViewModel: ProfileViewModel = viewModel() // Shared ViewModel for all screens
+
     var currentScreen by remember { mutableStateOf("Home") }
     var searchQuery by remember { mutableStateOf("") }
     var isReadyForWork by remember { mutableStateOf(false) }
@@ -55,23 +62,13 @@ fun AppNavigator() {
         topBar = {
             HeaderSection(
                 query = searchQuery,
-                onQueryChange = { newValue -> searchQuery = newValue }
+                onValueChange = { newValue -> searchQuery = newValue }
             )
         },
         bottomBar = {
             BottomNavBar(
                 selectedTab = currentScreen,
-                onTabSelected = { label ->
-                    when (label) {
-                        "Home" -> currentScreen = "Home"
-                        "Chat" -> currentScreen = "Chat"
-                        "Company" -> currentScreen = "Company"
-                        "Profile" -> currentScreen = "Profile"
-                        "My Jobs" -> {
-                            context.startActivity(Intent(context, NaviMyJobActivity::class.java))
-                        }
-                        else -> currentScreen = label
-                    }
+                onTabSelected = { label -> currentScreen = label
                 }
             )
         }
@@ -88,15 +85,33 @@ fun AppNavigator() {
                         if (newState) showBottomSheet = true
                     }
                 )
-                "My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
+
+                // PART B NAVIGATION INTEGRATION:
+                "Profile" -> {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "profile_view", // This must match the first screen
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Correctly link the view to the View Screen
+                        composable("profile_view") {
+                            ProfileScreenWithNav(navController, profileViewModel)
+                        }
+
+                        // Correctly link the form to the Form Screen
+                        composable("profile_form") {
+                            ProfileFormScreen(navController, profileViewModel)
+                        }
+
+                        composable("success") {
+                            SuccessScreen(navController)
+                        }
+                    }
+                }
 
                 "Chat" -> context.startActivity(Intent(context, NaviChatActivity::class.java))
-
-                // Add these placeholders so the screen isn't blank for other tabs
                 "Company" -> context.startActivity(Intent(context, NaviCompanyActivity::class.java))
-
-                "Profile" -> context.startActivity(Intent(context, NaviProfileActivity::class.java))
-
+                "My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
             }
 
             if (showBottomSheet) {
@@ -129,7 +144,6 @@ fun MainContent(
     onToggleHire: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    // Task 1
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -160,13 +174,10 @@ fun MainContent(
 
 @Composable
 fun StatusToggleCard(isChecked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    // Task 2
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -244,7 +255,7 @@ fun PopupSwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -
 }
 
 @Composable
-fun HeaderSection(query: String, onQueryChange: (String) -> Unit) {
+fun HeaderSection(query: String, onValueChange: (String) -> Unit) { // Changed parameter name here
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -255,7 +266,7 @@ fun HeaderSection(query: String, onQueryChange: (String) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextField(
                 value = query,
-                onValueChange = onQueryChange,
+                onValueChange = onValueChange,
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp)
@@ -293,7 +304,6 @@ fun QuickActions(onActionClick: (String) -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable { onActionClick(label) }
             ) {
-                // Task 2
                 Box(
                     modifier = Modifier
                         .size(56.dp)
@@ -365,13 +375,10 @@ fun CategoryButton(label: String, bgColor: Color, modifier: Modifier, onClick: (
 
 @Composable
 fun FeaturedVacancy() {
-    // Task 2
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -409,12 +416,7 @@ fun BottomNavBar(selectedTab: String, onTabSelected: (String) -> Unit) {
             NavigationBarItem(
                 selected = selectedTab == label,
                 onClick = { onTabSelected(label) },
-                icon = {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label
-                    )
-                },
+                icon = { Icon(icon, label) },
                 label = { Text(text = label) },
                 alwaysShowLabel = true
             )
