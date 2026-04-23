@@ -87,7 +87,7 @@ fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewMod
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            /*Text(
+                            Text(
                                 text = profileData.name.ifEmpty { "No Name Set" },
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
@@ -98,19 +98,7 @@ fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewMod
                                 Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier
                                     .size(14.dp)
                                     .padding(start = 4.dp))
-                            }*/
-                            val combinedDisplayName = if (profileData.name.isEmpty() && profileData.phone.isEmpty()) {
-                                "No Name Set"
-                            } else {
-                                "${profileData.name}  ${profileData.phone}"
                             }
-
-                            Text(
-                                text = combinedDisplayName,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(profileData.email.ifEmpty { "No Email" }, color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
                                 Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier
