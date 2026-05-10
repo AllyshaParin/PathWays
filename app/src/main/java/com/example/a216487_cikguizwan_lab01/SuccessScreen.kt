@@ -48,12 +48,11 @@ fun SuccessScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Task 1: Navigation back to start
         Button(
             onClick = {
                 // Navigate back to the form and clear the backstack
-                navController.navigate("profile_view") {
-                    popUpTo("profile_view") { inclusive = true }
+                navController.navigate("profile_detail") {
+                    popUpTo("profile_detail") { inclusive = true }
                 }
             },
             modifier = Modifier.fillMaxWidth(),

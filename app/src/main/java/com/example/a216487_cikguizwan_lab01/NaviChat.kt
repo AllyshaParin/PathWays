@@ -80,7 +80,7 @@ fun ChatScreenWithNav() {
                             intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                             context.startActivity(intent)
                         }
-                        "My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
+                        //"My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
                         "Company" -> context.startActivity(Intent(context, NaviCompanyActivity::class.java))
                         "Profile" -> context.startActivity(Intent(context, NaviProfileActivity::class.java))
                         // Stay on Chat

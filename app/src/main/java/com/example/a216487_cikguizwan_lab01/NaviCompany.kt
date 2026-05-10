@@ -105,7 +105,7 @@ fun CompanyScreenWithNav() {
                             context.startActivity(intent)
                         }
                         "Chat" -> context.startActivity(Intent(context, NaviChatActivity::class.java))
-                        "My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
+                        //"My Jobs" -> context.startActivity(Intent(context, NaviMyJobActivity::class.java))
                         "Profile" -> context.startActivity(Intent(context, NaviProfileActivity::class.java))
                         "Company" -> { /* Already here */ }
                     }

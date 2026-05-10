@@ -45,7 +45,6 @@ fun JobInMyScreen(onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                    // Search Bar styled like your screenshot
                     Box(
                         modifier = Modifier
                             .weight(1f)
