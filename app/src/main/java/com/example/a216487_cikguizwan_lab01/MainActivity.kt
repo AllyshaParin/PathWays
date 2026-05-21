@@ -29,26 +29,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 import kotlinx.coroutines.launch
 
 // --- Data Models ---
 data class CompanyData(val name: String, val logoUrl: String, val brandColor: Color)
-data class JobData(val title: String, val company: String, val salary: String, val logoUrl: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 1. Get database instance safely
+        val database = ProfileDatabase.getDatabase(applicationContext)
+
+        // 2. Initialize the ViewModel via your centralized Factory provider
+        val profileViewModelFactory = ProfileViewModelFactory(
+            userProfileDao = database.userProfileDao(),
+            jobDao = database.jobDao()
+        )
+
         setContent {
             A216487_CikguIzwan_Lab01Theme {
-                AppNavigator()
+                AppNavigator(factory = profileViewModelFactory)
             }
         }
     }
@@ -56,10 +69,17 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigator() {
+fun AppNavigator(factory: ViewModelProvider.Factory) {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val profileViewModel: ProfileViewModel = viewModel()
+
+    // Setup our shared viewmodel using the passed factory safely
+    val profileViewModel: ProfileViewModel = viewModel(factory = factory)
+
+    // Trigger the initial data loading sequence when the app first fires up
+    LaunchedEffect(Unit) {
+        profileViewModel.loadKnnRecommendations()
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -77,6 +97,13 @@ fun AppNavigator() {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    // Refresh recommendations whenever navigating back to the home content feed
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == "home_content") {
+            profileViewModel.loadKnnRecommendations()
+        }
+    }
 
     LaunchedEffect(currentTab) {
         if (currentTab == "Chat") {
@@ -97,13 +124,19 @@ fun AppNavigator() {
         },
         bottomBar = {
             BottomNavBar(
-                selectedTab = currentTab,
+                // FIXED: Dynamically matches the active bottom bar highlight based on NavHost route
+                selectedTab = when (currentRoute) {
+                    "home_content" -> "Home"
+                    "navimyjob" -> "My Jobs"
+                    "profile_view" -> "Profile"
+                    else -> currentTab
+                },
                 onTabSelected = { label ->
                     currentTab = label
                     when (label) {
                         "Home" -> navController.navigate("home_content") { popUpTo(0) }
-                        "Profile" -> navController.navigate("profile_view")
-                        "My Jobs" -> navController.navigate("navimyjob")
+                        "Profile" -> navController.navigate("profile_view") { launchSingleTop = true }
+                        "My Jobs" -> navController.navigate("navimyjob") { launchSingleTop = true }
                     }
                 }
             )
@@ -118,7 +151,8 @@ fun AppNavigator() {
                             isReadyForWork = newState
                             if (newState) showBottomSheet = true
                         },
-                        navController = navController
+                        navController = navController,
+                        viewModel = profileViewModel
                     )
                 }
                 composable("profile_view") { ProfileScreenWithNav(navController, profileViewModel) }
@@ -126,10 +160,36 @@ fun AppNavigator() {
                 composable("career_tools") { CareerToolsScreen(navController) }
                 composable("salary_input") { SalaryInputScreen(navController, profileViewModel) }
                 composable("salary_result") { SalaryResultScreen(navController, profileViewModel) }
-                composable("review_application") { ReviewApplicationScreen(navController, profileViewModel) }
+
+                // FIXED & COMPLETED: Added dynamic argument parsing setup to allow real job applications
+                composable(
+                    route = "review_application/{jobTitle}/{company}/{salary}/{location}",
+                    arguments = listOf(
+                        navArgument("jobTitle") { type = NavType.StringType },
+                        navArgument("company") { type = NavType.StringType },
+                        navArgument("salary") { type = NavType.StringType },
+                        navArgument("location") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val jobTitle = backStackEntry.arguments?.getString("jobTitle") ?: "Unknown Job"
+                    val company = backStackEntry.arguments?.getString("company") ?: "Unknown Company"
+                    val salary = backStackEntry.arguments?.getString("salary") ?: "Unspecified Salary"
+                    val location = backStackEntry.arguments?.getString("location") ?: "Malaysia"
+
+                    ReviewApplicationScreen(
+                        navController = navController,
+                        viewModel = profileViewModel,
+                        jobTitle = jobTitle,
+                        company = company,
+                        salary = salary,
+                        location = location
+                    )
+                }
+
                 composable("job_in_malaysia") { JobInMyScreen(navController, profileViewModel) }
                 composable("navimyjob") { MyJobsScreenWithNav(navController, profileViewModel) }
-                composable("edit_personal_details") { EditPersonalDetailsScreen(navController, profileViewModel) }
+                composable("success") { SuccessScreen(navController) }
+                composable("edit_profile") { ProfileFormScreen(navController, profileViewModel) }
             }
         }
 
@@ -167,9 +227,12 @@ fun AppNavigator() {
 fun MainContent(
     isReady: Boolean,
     onToggleHire: (Boolean) -> Unit,
-    navController: NavController
+    navController: NavController,
+    viewModel: ProfileViewModel
 ) {
     val context = LocalContext.current
+    val knnJobs by viewModel.recommendedJobs
+
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5))) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -188,11 +251,14 @@ fun MainContent(
             }
             item { CareerCollections(onNavigate = { navController.navigate(it) }) }
             item { FeaturedVacancy() }
+
+            // MODIFIED: Passed navController down so users can click on cards to launch applications
+            item { FeaturedJobsRow(recommendedJobs = knnJobs, navController = navController) }
+
             item { VacancySummaryCard() }
             item { WalkInBanner() }
             item { TopCompaniesSection() }
             item { AvailabilityCard() }
-            item { FeaturedJobsRow() }
         }
     }
 }
@@ -358,7 +424,6 @@ fun QuickActions(onActionClick: (String) -> Unit) {
     }
 }
 
-// --- UPDATED CAREER COLLECTIONS SECTION ---
 @Composable
 fun CareerCollections(onNavigate: (String) -> Unit) {
     val context = LocalContext.current
@@ -369,7 +434,6 @@ fun CareerCollections(onNavigate: (String) -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Row 1
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CategoryButton("High Paying", Color(0xFFFFEBEE), Modifier.weight(1f)) {
                 context.startActivity(Intent(context, HighPayActivity::class.java))
@@ -379,13 +443,11 @@ fun CareerCollections(onNavigate: (String) -> Unit) {
             }
         }
         Spacer(Modifier.height(8.dp))
-        // Row 2 (Added Part Time and International)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CategoryButton("Part-Time", Color(0xFFF1F8E9), Modifier.weight(1f)) {
                 context.startActivity(Intent(context, PartTimeActivity::class.java))
             }
             CategoryButton("International", Color(0xFFFFF3E0), Modifier.weight(1f)) {
-                // Navigate to a screen route if you don't have a separate Activity yet
                 onNavigate("navimyjob")
             }
         }
@@ -422,20 +484,81 @@ fun TopCompaniesSection() {
 }
 
 @Composable
-fun FeaturedJobsRow() {
-    val jobs = listOf(
-        JobData("F&B Supervisor", "Texas Chicken", "MYR3,200 - 4,500", "https://logo.clearbit.com/texaschickenmalaysia.com"),
-        JobData("Retail Assistant", "Uniqlo", "MYR2,100 - 2,800", "https://logo.clearbit.com/uniqlo.com")
-    )
+fun FeaturedJobsRow(recommendedJobs: List<JobEntity>, navController: NavController) {
     Column {
-        Text("Featured Job", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(jobs) { job ->
-                Card(modifier = Modifier.width(260.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(job.title, fontWeight = FontWeight.Bold)
-                        Text(job.company, color = Color.Gray, fontSize = 12.sp)
-                        Text(job.salary, color = Color.Red, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Suggested Jobs for You (KNN Match)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color(0xFF2E7D32)
+            )
+            Text(
+                text = "Top 5 Picks",
+                color = Color(0xFFE91E63),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (recommendedJobs.isEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth().height(100.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Matching optimal local opportunities...", color = Color.Gray, fontSize = 14.sp)
+                }
+            }
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+                items(recommendedJobs) { job ->
+                    Card(
+                        modifier = Modifier
+                            .width(260.dp)
+                            // FIXED: Added click modifier to forward details dynamically to review checkout setup
+                            .clickable {
+                                val encTitle = android.net.Uri.encode(job.title)
+                                val encCompany = android.net.Uri.encode(job.company)
+                                val encSalary = android.net.Uri.encode(job.salary)
+                                val encLoc = android.net.Uri.encode(
+                                    when (job.locationCode) {
+                                        1 -> "Selangor/KL"
+                                        2 -> "Johor"
+                                        3 -> "Penang"
+                                        else -> "Malaysia"
+                                    }
+                                )
+                                navController.navigate("review_application/$encTitle/$encCompany/$encSalary/$encLoc")
+                            },
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage(
+                                    model = job.logoUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(job.title, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 14.sp)
+                                    Text(job.company, color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(job.salary, color = Color(0xFFE91E63), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+                            }
+                        }
                     }
                 }
             }
@@ -517,7 +640,8 @@ fun BottomNavBar(selectedTab: String, onTabSelected: (String) -> Unit) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun AppPreview() {
+    val emptyFactory = object : ViewModelProvider.Factory {}
     A216487_CikguIzwan_Lab01Theme {
-        AppNavigator()
+        AppNavigator(factory = emptyFactory)
     }
 }

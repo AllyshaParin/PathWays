@@ -28,7 +28,6 @@ fun MyJobsScreenWithNav(navController: NavController, viewModel: ProfileViewMode
     val tabs = listOf("All", "Submitted", "Viewed", "Shortlisted", "Rejected")
 
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
-        // --- 1. FIXED TABS AT TOP ---
         ScrollableTabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = Color.White,
@@ -58,17 +57,16 @@ fun MyJobsScreenWithNav(navController: NavController, viewModel: ProfileViewMode
             }
         }
 
-        // --- 2. SCROLLABLE LIST AREA ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF5F5F5))
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Sort Dropdown
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.End
             ) {
                 Surface(
@@ -86,9 +84,7 @@ fun MyJobsScreenWithNav(navController: NavController, viewModel: ProfileViewMode
                 }
             }
 
-            // --- 3. LIST LOGIC ---
             if (viewModel.appliedJobs.isEmpty()) {
-                // EMPTY STATE
                 Spacer(Modifier.height(80.dp))
                 Icon(Icons.Default.WorkOutline, null, modifier = Modifier.size(80.dp), tint = Color.LightGray)
                 Spacer(Modifier.height(16.dp))
@@ -101,16 +97,15 @@ fun MyJobsScreenWithNav(navController: NavController, viewModel: ProfileViewMode
                     fontSize = 14.sp
                 )
             } else {
-                // LIST OF JOBS
                 Text(
                     "Submitted Applications (${viewModel.appliedJobs.size})",
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
 
                 viewModel.appliedJobs.forEach { job ->
-                    AppliedJobCard(job)
+                    AppliedJobCard(appliedJob = job, viewModel = viewModel)
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
@@ -121,45 +116,49 @@ fun MyJobsScreenWithNav(navController: NavController, viewModel: ProfileViewMode
 }
 
 @Composable
-fun AppliedJobCard(job: JobApplication) {
+fun AppliedJobCard(
+    appliedJob: JobApplication,
+    viewModel: ProfileViewModel
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(45.dp),
-                    color = Color(0xFFFFEBEE),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Default.Business, null, tint = Color.Red, modifier = Modifier.padding(8.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(job.jobTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Maukerja Recruitment Sdn Bhd", color = Color.Gray, fontSize = 14.sp)
-                }
-            }
+            Text(appliedJob.jobTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(appliedJob.companyName, color = Color.Gray, fontSize = 14.sp)
+            Text(appliedJob.salaryRange, color = Color.Red, fontWeight = FontWeight.Bold)
+            Text(appliedJob.location, color = Color.Gray, fontSize = 12.sp)
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Text(job.salaryRange, color = Color.Red, fontWeight = FontWeight.Bold)
-            Text(job.location, color = Color.Gray, fontSize = 13.sp)
-
-            Spacer(Modifier.height(16.dp))
-
-            Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(4.dp)) {
-                Text(
-                    text = job.status,
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SuggestionChip(
+                    onClick = { },
+                    label = { Text("Application Submitted", color = Color(0xFF1976D2)) },
+                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFFE3F2FD))
                 )
+
+                TextButton(
+                    // CHANGED: Passes the 'appliedJob' object directly to clear it cleanly
+                    onClick = { viewModel.cancelJobApplication(appliedJob) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD32F2F))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Cancel", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
             }
         }
     }

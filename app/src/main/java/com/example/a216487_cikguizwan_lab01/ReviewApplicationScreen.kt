@@ -1,175 +1,141 @@
 package com.example.a216487_cikguizwan_lab01
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReviewApplicationScreen(navController: NavController, viewModel: ProfileViewModel) {
-    val profile = viewModel.uiState.value
-    val job = viewModel.salaryState.value
-    val languages = viewModel.languages
+fun ReviewApplicationScreen(
+    navController: NavController,
+    viewModel: ProfileViewModel,
+    // Dynamic arguments passed from the clicked job recommendation
+    jobTitle: String = "Unknown Job",
+    company: String = "Unknown Company",
+    salary: String = "Unspecified Salary",
+    location: String = "Malaysia"
+) {
+    // Collect Room state accurately to dynamically fill application reviews
+    val profileData by viewModel.userProfileState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Review Application", color = Color.White, fontSize = 18.sp) },
+                title = { Text("Review Application", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFFE91E63))
             )
         },
         bottomBar = {
-            Surface(shadowElevation = 8.dp) {
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    TextButton(onClick = { navController.popBackStack() }, modifier = Modifier.weight(1f)) {
-                        Text("Cancel", color = Color.Red, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = { navController.navigate("navimyjob") },
-                        modifier = Modifier.weight(1.5f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Submit Application", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).background(Color(0xFFF5F5F5)).verticalScroll(rememberScrollState())
-        ) {
-            // --- Job Summary ---
-            Card(modifier = Modifier.fillMaxWidth().padding(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Row(modifier = Modifier.padding(16.dp)) {
-                    Surface(modifier = Modifier.size(50.dp).border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))) {
-                        Icon(Icons.Default.Business, null, modifier = Modifier.padding(8.dp), tint = Color.Red)
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text(job.jobTitle.ifEmpty { "Sales Advisor" }, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Super Ceramic Tiles & Design Sdn Bhd", color = Color.Gray, fontSize = 14.sp)
-                        Text("RM ${job.minPay} - RM ${job.maxPay} Per Month", color = Color.Red, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-
-            // --- Personal Details (Expanded) ---
-            ReviewSectionHeader("Personal Details", onEdit = { navController.navigate("edit_personal_details") })
-            Column(modifier = Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
-                DetailItem("About Me", viewModel.aboutMe.value)
-                DetailItem("Full Name", profile.name)
-                DetailItem("Gender", profile.gender)
-                DetailItem("Date of Birth", profile.dob)
-                DetailItem("Nationality", profile.nationality)
-                DetailItem("Address", "${profile.address}, ${profile.postcode}, ${profile.cityState}")
-            }
-
-            // --- Contact (Edit Button Removed) ---
-            PaddingValues(16.dp)
-            Text(
-                "Contact",
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp),
-                color = Color(0xFF2D3E50)
-            )
-            Column(modifier = Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
-                DetailItem("Email", profile.email)
-                DetailItem("Phone Number", profile.phone)
-            }
-
-            // --- Language Proficiency (Dynamic) ---
-            ReviewSectionHeader("Language Proficiency", onEdit = { navController.navigate("edit_skills") })
-                try {
-                    navController.navigate("edit_skills")
-                } catch (e: Exception) {
-                    println("Navigation Error: ${e.message}")
-                }
-
-            Column(modifier = Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
-                viewModel.languages.forEach { lang: String ->
-                    Text(
-                        text = lang,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(vertical = 4.dp)
+            Button(
+                onClick = {
+                    // DYNAMIC: Submits the exact job the user clicked on into Room DB!
+                    viewModel.applyForJob(
+                        title = jobTitle,
+                        company = company,
+                        location = location,
+                        salary = salary
                     )
+                    // Clear backstack to home view safely
+                    navController.popBackStack("home_content", false)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Confirm & Submit Application", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFFF5F5F5))
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+            // Job Detail Quick Summary Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Applying For:", fontSize = 12.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                    Text(jobTitle, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
+                    Text(company, fontSize = 14.sp, color = Color.DarkGray)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(salary, color = Color.Red, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text(location, color = Color.Gray, fontSize = 13.sp)
+                    }
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Text(
+                text = "Please verify your profile information before submitting to employers.",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Applicant Profile Summary", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = Color.Black)
+                    HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+
+                    ReviewRow(label = "Full Name", value = profileData.name)
+                    ReviewRow(label = "Phone Number", value = profileData.phone)
+                    ReviewRow(label = "Email Address", value = profileData.email)
+                    ReviewRow(label = "Gender", value = profileData.gender)
+                    ReviewRow(label = "Age Metric", value = "${profileData.age} years old")
+                    ReviewRow(label = "Nationality", value = profileData.nationality)
+                    ReviewRow(label = "Marital Status", value = profileData.maritalStatus)
+                    ReviewRow(label = "Work Permit Status", value = profileData.workPermit)
+
+                    val combinedAddress = "${profileData.address}, ${profileData.postcode} ${profileData.cityState}, ${profileData.country}"
+                    ReviewRow(label = "Contact Address", value = combinedAddress)
+                }
+            }
         }
     }
 }
 
 @Composable
-fun ReviewSectionHeader(title: String, onEdit: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF2D3E50))
-        OutlinedButton(
-            onClick = onEdit,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(4.dp),
-            border = BorderStroke(1.dp, Color.Red)
-        ) {
-            Icon(Icons.Default.Edit, null, modifier = Modifier.size(14.dp), tint = Color.Red)
-            Spacer(Modifier.width(4.dp))
-            Text("Edit", color = Color.Red, fontSize = 12.sp)
-        }
-    }
-}
-
-@Composable
-fun DetailItem(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(label, color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(value.ifEmpty { "-" }, color = Color.DarkGray, fontSize = 15.sp)
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun ReviewApplicationPreview() {
-    A216487_CikguIzwan_Lab01Theme {
-        // Create a mock NavController for the preview
-        val mockNavController = androidx.navigation.compose.rememberNavController()
-
-        // Initialize the real ViewModel (it will use the default data we defined)
-        val mockViewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-
-        // Manually set a mock job so the Job Card isn't empty in the preview
-        mockViewModel.calculateSalary("Accountant", "Selangor")
-
-        ReviewApplicationScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel
-        )
+fun ReviewRow(label: String, value: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(text = label, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(text = value.ifEmpty { "Not Provided" }, fontSize = 15.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
     }
 }

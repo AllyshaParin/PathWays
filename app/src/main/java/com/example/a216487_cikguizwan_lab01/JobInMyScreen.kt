@@ -5,46 +5,60 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobInMyScreen(navController: NavController, viewModel: ProfileViewModel) {
-    // REMOVED internal Scaffold and topBar logic to prevent "Double Header"
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        // Only keep the sub-header (Filter/Sort) because the Search bar is now in MainActivity
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            AssistChip(
-                onClick = {},
-                label = { Text("Filter") },
-                leadingIcon = { Icon(Icons.Default.FilterList, null, modifier = Modifier.size(18.dp)) }
-            )
-            AssistChip(
-                onClick = {},
-                label = { Text("Sort by : Relevance") }
-            )
+    Scaffold(
+        topBar = {
+            Column(modifier = Modifier.background(Color(0xFF2E7D32)).statusBarsPadding()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(45.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color.White)
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("selangor", color = Color.Black, fontSize = 16.sp)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Color.White).padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AssistChip(onClick = {}, label = { Text("Filter") }, leadingIcon = { Icon(Icons.Default.FilterList, null, modifier = Modifier.size(18.dp)) })
+                    AssistChip(onClick = {}, label = { Text("Sort by : Relevance") })
+                }
+            }
         }
-
+    ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(innerPadding).background(Color(0xFFF5F5F5)),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -54,9 +68,20 @@ fun JobInMyScreen(navController: NavController, viewModel: ProfileViewModel) {
                     company = "Zensho Foods Malaysia",
                     salary = "MYR2,000 - MYR2,500",
                     onApply = {
-                        viewModel.calculateSalary("Purchasing-Junior Executive", "Selangor")
-                        viewModel.applyForJob("Purchasing-Junior Executive", "Selangor", "MYR2,000 - MYR2,500")
-                        navController.navigate("review_application")
+                        val title = "Purchasing-Junior Executive"
+                        val company = "Zensho Foods Malaysia"
+                        val salary = "MYR2,000 - MYR2,500"
+                        val location = "Petaling Jaya, Selangor"
+
+                        viewModel.calculateSalary(title, "Selangor")
+                        viewModel.applyForJob(title, company, location, salary)
+
+                        // FIXED: Safely URL encode arguments matching the NavHost route signature
+                        val encTitle = android.net.Uri.encode(title)
+                        val encCompany = android.net.Uri.encode(company)
+                        val encSalary = android.net.Uri.encode(salary)
+                        val encLoc = android.net.Uri.encode(location)
+                        navController.navigate("review_application/$encTitle/$encCompany/$encSalary/$encLoc")
                     }
                 )
             }
@@ -66,9 +91,20 @@ fun JobInMyScreen(navController: NavController, viewModel: ProfileViewModel) {
                     company = "PGH Group Trading Sdn Bhd",
                     salary = "MYR3,500 - MYR5,500",
                     onApply = {
-                        viewModel.calculateSalary("Office Administrator", "Selangor")
-                        viewModel.applyForJob("Office Administrator", "Selangor", "MYR3,500 - MYR5,500")
-                        navController.navigate("review_application")
+                        val title = "Office Administrator"
+                        val company = "PGH Group Trading Sdn Bhd"
+                        val salary = "MYR3,500 - MYR5,500"
+                        val location = "Petaling Jaya, Selangor"
+
+                        viewModel.calculateSalary(title, "Selangor")
+                        viewModel.applyForJob(title, company, location, salary)
+
+                        // FIXED: Safely URL encode arguments matching the NavHost route signature
+                        val encTitle = android.net.Uri.encode(title)
+                        val encCompany = android.net.Uri.encode(company)
+                        val encSalary = android.net.Uri.encode(salary)
+                        val encLoc = android.net.Uri.encode(location)
+                        navController.navigate("review_application/$encTitle/$encCompany/$encSalary/$encLoc")
                     }
                 )
             }
@@ -78,9 +114,20 @@ fun JobInMyScreen(navController: NavController, viewModel: ProfileViewModel) {
                     company = "Lestari Maju Sdn Bhd",
                     salary = "MYR2,200 - MYR3,000",
                     onApply = {
-                        viewModel.calculateSalary("Admin Assistant", "Selangor")
-                        viewModel.applyForJob("Admin Assistant", "Selangor", "MYR2,200 - MYR3,000")
-                        navController.navigate("review_application")
+                        val title = "Admin Assistant"
+                        val company = "Lestari Maju Sdn Bhd"
+                        val salary = "MYR2,200 - MYR3,000"
+                        val location = "Petaling Jaya, Selangor"
+
+                        viewModel.calculateSalary(title, "Selangor")
+                        viewModel.applyForJob(title, company, location, salary)
+
+                        // FIXED: Safely URL encode arguments matching the NavHost route signature
+                        val encTitle = android.net.Uri.encode(title)
+                        val encCompany = android.net.Uri.encode(company)
+                        val encSalary = android.net.Uri.encode(salary)
+                        val encLoc = android.net.Uri.encode(location)
+                        navController.navigate("review_application/$encTitle/$encCompany/$encSalary/$encLoc")
                     }
                 )
             }
@@ -88,7 +135,6 @@ fun JobInMyScreen(navController: NavController, viewModel: ProfileViewModel) {
     }
 }
 
-// JobCard component remains the same
 @Composable
 fun JobCard(title: String, company: String, salary: String, onApply: () -> Unit) {
     Card(
@@ -99,9 +145,7 @@ fun JobCard(title: String, company: String, salary: String, onApply: () -> Unit)
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier
-                        .size(40.dp)
-                        .background(Color(0xFFFFEBEE), RoundedCornerShape(4.dp)),
+                    Modifier.size(40.dp).background(Color(0xFFFFEBEE), RoundedCornerShape(4.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Business, null, tint = Color.Red)
