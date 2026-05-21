@@ -24,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 
@@ -31,10 +34,23 @@ class NaviProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // --- FIX: Setup the same Room DAOs Factory so the ViewModel doesn't crash on launch ---
+        val database = ProfileDatabase.getDatabase(applicationContext)
+        val userDao = database.userProfileDao()
+        val jobDao = database.jobDao()
+
+        val profileViewModelFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ProfileViewModel(userDao, jobDao) as T
+            }
+        }
+
         setContent {
             A216487_CikguIzwan_Lab01Theme {
                 val navController = androidx.navigation.compose.rememberNavController()
-                val profileViewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                val profileViewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = profileViewModelFactory)
 
                 ProfileScreenWithNav(navController = navController, viewModel = profileViewModel)
             }
@@ -44,7 +60,8 @@ class NaviProfileActivity : ComponentActivity() {
 
 @Composable
 fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewModel) {
-    val profileData = viewModel.uiState.value
+    // --- FIX: Observe userProfileState as a state stream from Room ---
+    val profileData by viewModel.userProfileState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -52,7 +69,7 @@ fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewMod
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
-        // --- Header Section (Remains Original) ---
+        // --- Header Section ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -78,7 +95,7 @@ fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewMod
                             modifier = Modifier
                                 .size(24.dp)
                                 .align(Alignment.TopEnd)
-                                .clickable { navController.navigate("profile_form") }
+                                .clickable { navController.navigate("edit_personal_details") } // Matches MainActivity route key
                         ) {
                             Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(4.dp))
                         }
@@ -231,9 +248,10 @@ fun ProfileHeaderButton(text: String, icon: ImageVector?) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ProfileScreenPreview() {
+    val emptyFactory = object : ViewModelProvider.Factory {}
     A216487_CikguIzwan_Lab01Theme {
         val mockNavController = androidx.navigation.compose.rememberNavController()
-        val mockViewModel : ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+        val mockViewModel : ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = emptyFactory)
         ProfileScreenWithNav(
             navController = mockNavController,
             viewModel = mockViewModel

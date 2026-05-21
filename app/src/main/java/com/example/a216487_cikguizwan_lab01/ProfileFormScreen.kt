@@ -12,23 +12,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel) {
-    val currentData = viewModel.uiState.value
+    // Safely collect Room database updates in alignment with lifecycle changes
+    val currentData by viewModel.userProfileState.collectAsStateWithLifecycle()
 
-    // State management for all fields
-    var name by remember { mutableStateOf(currentData.name) }
-    var gender by remember { mutableStateOf(currentData.gender) }
-    var dob by remember { mutableStateOf(currentData.dob) }
-    var phone by remember { mutableStateOf(currentData.phone) }
-    var email by remember { mutableStateOf(currentData.email) }
-    var maritalStatus by remember { mutableStateOf(currentData.maritalStatus) }
-    var nationality by remember { mutableStateOf(currentData.nationality) }
-    var workPermit by remember { mutableStateOf(currentData.workPermit) }
-    var address by remember { mutableStateOf(currentData.address) }
+    // Interactive UI form states
+    var name by remember(currentData) { mutableStateOf(currentData.name) }
+    var gender by remember(currentData) { mutableStateOf(currentData.gender) }
+    var dob by remember(currentData) { mutableStateOf(currentData.dob) }
+    var phone by remember(currentData) { mutableStateOf(currentData.phone) }
+    var email by remember(currentData) { mutableStateOf(currentData.email) }
+    var nationality by remember(currentData) { mutableStateOf(currentData.nationality) }
+    var maritalStatus by remember(currentData) { mutableStateOf(currentData.maritalStatus) }
+    var workPermit by remember(currentData) { mutableStateOf(currentData.workPermit) }
+    var address by remember(currentData) { mutableStateOf(currentData.address) }
+
+    // KNN Vector specific inputs
+    var age by remember(currentData) { mutableStateOf(currentData.age.toString()) }
+    var selectedEduLevel by remember(currentData) { mutableStateOf(currentData.educationLevel) }
+    var selectedLocCode by remember(currentData) { mutableStateOf(currentData.locationCode) }
+
+    var eduMenuExpanded by remember { mutableStateOf(false) }
+    var locMenuExpanded by remember { mutableStateOf(false) }
+
+    val eduOptions = listOf("High School" to 1, "Diploma" to 2, "Bachelor's Degree" to 3, "Master's / PhD" to 4)
+    val locOptions = listOf("Selangor / Kuala Lumpur" to 1, "Johor" to 2, "Pulau Pinang" to 3, "Other States" to 4)
 
     Scaffold(
         topBar = {
@@ -47,7 +60,7 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
@@ -59,7 +72,6 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
 
             Spacer(Modifier.height(16.dp))
 
-            // --- Input Fields ---
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -68,12 +80,21 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
             )
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = gender,
-                onValueChange = { gender = it },
-                label = { Text("Gender*") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = gender,
+                    onValueChange = { gender = it },
+                    label = { Text("Gender*") },
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = age,
+                    onValueChange = { age = it },
+                    label = { Text("Age*") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
@@ -82,6 +103,66 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
                 label = { Text("Date of Birth*") },
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(12.dp))
+
+            // --- KNN Quantitative Dropdowns ---
+            ExposedDropdownMenuBox(
+                expanded = eduMenuExpanded,
+                onExpandedChange = { eduMenuExpanded = !eduMenuExpanded }
+            ) {
+                OutlinedTextField(
+                    value = eduOptions.firstOrNull { it.second == selectedEduLevel }?.first ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Highest Education Level*") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = eduMenuExpanded) },
+                    // FIXED: Added .menuAnchor() here to anchor the dropdown container correctly
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = eduMenuExpanded,
+                    onDismissRequest = { eduMenuExpanded = false }
+                ) {
+                    eduOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.first) },
+                            onClick = {
+                                selectedEduLevel = option.second
+                                eduMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = locMenuExpanded,
+                onExpandedChange = { locMenuExpanded = !locMenuExpanded }
+            ) {
+                OutlinedTextField(
+                    value = locOptions.firstOrNull { it.second == selectedLocCode }?.first ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Preferred Location Zone*") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = locMenuExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = locMenuExpanded,
+                    onDismissRequest = { locMenuExpanded = false }
+                ) {
+                    locOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.first) },
+                            onClick = {
+                                selectedLocCode = option.second
+                                locMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
@@ -137,22 +218,25 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
 
             Spacer(Modifier.height(32.dp))
 
-            // --- Action Button ---
             Button(
                 onClick = {
-                    val updatedData = currentData.copy(
+                    val entityPayload = currentData.copy(
                         name = name,
                         gender = gender,
                         dob = dob,
                         phone = phone,
                         email = email,
-                        maritalStatus = maritalStatus,
                         nationality = nationality,
+                        maritalStatus = maritalStatus,
                         workPermit = workPermit,
-                        address = address
+                        address = address,
+                        age = age.toIntOrNull() ?: currentData.age,
+                        educationLevel = selectedEduLevel,
+                        locationCode = selectedLocCode
+                        // Note: cityState and country remain untouched via copy()
                     )
-                    viewModel.updateProfile(updatedData)
-                    navController.navigate("success")
+                    viewModel.updateProfile(entityPayload)
+                    navController.popBackStack()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -160,9 +244,8 @@ fun ProfileFormScreen(navController: NavController, viewModel: ProfileViewModel)
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
             ) {
-                Text("Save", fontWeight = FontWeight.Bold, color = Color.White)
+                Text("SAVE", fontWeight = FontWeight.Bold, color = Color.White)
             }
-
             Spacer(Modifier.height(16.dp))
         }
     }
