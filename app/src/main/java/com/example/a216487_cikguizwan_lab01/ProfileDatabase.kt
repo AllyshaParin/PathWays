@@ -52,9 +52,6 @@ data class JobEntity(
     }
 }
 
-// NOTE: JobApplicationEntity has been removed from this file
-// to prevent the "Redeclaration" error since it is defined in JobDao.kt.
-
 // =====================================================================
 // 2. DATABASE CONFIGURATION
 // =====================================================================

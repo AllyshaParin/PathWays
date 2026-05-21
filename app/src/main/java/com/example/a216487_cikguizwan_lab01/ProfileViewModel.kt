@@ -208,7 +208,6 @@ class ProfileViewModel(
     }
 }
 
-// --- FACTORY CLEANLY APPENDED OUTSIDE CLASS BOUNDS ---
 class ProfileViewModelFactory(
     private val userProfileDao: UserProfileDao,
     private val jobDao: JobDao
