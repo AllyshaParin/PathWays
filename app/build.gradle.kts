@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.ksp)
+    //id("com.android.application")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -50,6 +52,14 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.ui)
+    implementation(platform("com.google.firebase:firebase-bom:34.14.1"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-firestore")
+    // Add these inside your dependencies block in build.gradle.kts (Module: app)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     
     // Room
     implementation(libs.androidx.room.runtime)

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "218803837226",
+    "project_id": "pathways-78c12",
+    "storage_bucket": "pathways-78c12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218803837226:android:da877c991facccd0b8e653",
+        "android_client_info": {
+          "package_name": "com.example.a216487_cikguizwan_lab01"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAHJhol1N3jeMk3LV0JR-m9zxtuSv9RxU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

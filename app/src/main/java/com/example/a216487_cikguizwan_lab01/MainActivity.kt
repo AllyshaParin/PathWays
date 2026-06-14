@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,23 +42,27 @@ import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
 import kotlinx.coroutines.launch
+import com.google.firebase.FirebaseApp
 
 // --- Data Models ---
-data class CompanyData(val name: String, val logoUrl: String, val brandColor: Color)
+data class CompanyData(val name: String, val logoRes: Int, val brandColor: Color)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 1. Get database instance safely
         val database = ProfileDatabase.getDatabase(applicationContext)
 
-        // 2. Initialize the ViewModel via your centralized Factory provider
-        val profileViewModelFactory = ProfileViewModelFactory(
-            userProfileDao = database.userProfileDao(),
-            jobDao = database.jobDao()
-        )
+        val profileViewModelFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ProfileViewModel(
+                    userProfileDao = database.userProfileDao(),
+                    jobDao = database.jobDao()
+                ) as T
+            }
+        }
 
         setContent {
             A216487_CikguIzwan_Lab01Theme {
@@ -73,10 +78,8 @@ fun AppNavigator(factory: ViewModelProvider.Factory) {
     val context = LocalContext.current
     val navController = rememberNavController()
 
-    // Setup our shared viewmodel using the passed factory safely
     val profileViewModel: ProfileViewModel = viewModel(factory = factory)
 
-    // Trigger the initial data loading sequence when the app first fires up
     LaunchedEffect(Unit) {
         profileViewModel.loadKnnRecommendations()
     }
@@ -98,7 +101,6 @@ fun AppNavigator(factory: ViewModelProvider.Factory) {
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // Refresh recommendations whenever navigating back to the home content feed
     LaunchedEffect(currentRoute) {
         if (currentRoute == "home_content") {
             profileViewModel.loadKnnRecommendations()
@@ -124,7 +126,6 @@ fun AppNavigator(factory: ViewModelProvider.Factory) {
         },
         bottomBar = {
             BottomNavBar(
-                // FIXED: Dynamically matches the active bottom bar highlight based on NavHost route
                 selectedTab = when (currentRoute) {
                     "home_content" -> "Home"
                     "navimyjob" -> "My Jobs"
@@ -161,7 +162,10 @@ fun AppNavigator(factory: ViewModelProvider.Factory) {
                 composable("salary_input") { SalaryInputScreen(navController, profileViewModel) }
                 composable("salary_result") { SalaryResultScreen(navController, profileViewModel) }
 
-                // FIXED & COMPLETED: Added dynamic argument parsing setup to allow real job applications
+                composable("community_feed") { CommunityFeedScreen(navController, profileViewModel) }
+                composable("remote_jobs_feed") { RemoteJobsFeedScreen(navController, profileViewModel) }
+                composable("ats_scanner") { AtsScannerScreen(navController, profileViewModel) }
+
                 composable(
                     route = "review_application/{jobTitle}/{company}/{salary}/{location}",
                     arguments = listOf(
@@ -246,15 +250,15 @@ fun MainContent(
                         "Jobs In Malaysia" -> navController.navigate("job_in_malaysia")
                         "Upload Resume" -> context.startActivity(Intent(context, DropResumeActivity::class.java))
                         "Chat" -> context.startActivity(Intent(context, NaviChatActivity::class.java))
+                        "ATS Checker" -> navController.navigate("ats_scanner")
+                        "Community" -> navController.navigate("community_feed")
+                        "Remote Jobs" -> navController.navigate("remote_jobs_feed")
                     }
                 })
             }
             item { CareerCollections(onNavigate = { navController.navigate(it) }) }
             item { FeaturedVacancy() }
-
-            // MODIFIED: Passed navController down so users can click on cards to launch applications
             item { FeaturedJobsRow(recommendedJobs = knnJobs, navController = navController) }
-
             item { VacancySummaryCard() }
             item { WalkInBanner() }
             item { TopCompaniesSection() }
@@ -263,6 +267,9 @@ fun MainContent(
     }
 }
 
+// =====================================================================
+// FIXED HEADER SECTION: DYNAMICALLY REMOVES SEARCH BAR ON OTHER PAGES
+// =====================================================================
 @Composable
 fun HeaderSection(
     query: String,
@@ -270,6 +277,9 @@ fun HeaderSection(
     currentRoute: String?,
     navController: NavController
 ) {
+    // Determine if the current screen requires a search bar layout container
+    val shouldShowSearch = currentRoute == "home_content" || currentRoute == "job_in_malaysia"
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -287,29 +297,51 @@ fun HeaderSection(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Show back navigation arrow only when safe to pop back stack layouts
                 if (currentRoute != "home_content") {
                     IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.padding(end = 4.dp)) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 }
-                TextField(
-                    value = if (currentRoute == "job_in_malaysia") "selangor" else query,
-                    onValueChange = onValueChange,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(26.dp)),
-                    placeholder = { Text("Search jobs or skills...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
+
+                if (shouldShowSearch) {
+                    // Render search input container only if matching valid search feeds
+                    TextField(
+                        value = if (currentRoute == "job_in_malaysia") "selangor" else query,
+                        onValueChange = onValueChange,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(26.dp)),
+                        placeholder = { Text("Search jobs or skills...") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        singleLine = true
+                    )
+                } else {
+                    // Fallback title banner text if the search field framework is hidden
+                    val screenTitle = when(currentRoute) {
+                        "profile_view" -> "My Profile Dashboard"
+                        "career_tools" -> "Career Hub & Tips"
+                        "navimyjob" -> "My Applications"
+                        else -> "PathWays Community"
+                    }
+                    Text(
+                        text = screenTitle,
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+                    )
+                }
+
                 Spacer(Modifier.width(12.dp))
                 Icon(Icons.Default.Notifications, "Alerts", tint = Color.White)
             }
@@ -406,19 +438,43 @@ fun PreferenceToggle(label: String, checked: Boolean, onCheckedChange: (Boolean)
 
 @Composable
 fun QuickActions(onActionClick: (String) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        val items = listOf(
-            "Jobs In Malaysia" to Icons.Default.LocationOn,
-            "Upload Resume" to Icons.Default.CloudUpload,
-            "ATS Checker" to Icons.Default.QrCodeScanner,
-            "See More" to Icons.Default.History
-        )
-        items.forEach { (label, icon) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onActionClick(label) }) {
-                Box(modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+    val items = listOf(
+        "Jobs In Malaysia" to Icons.Default.LocationOn,
+        "Upload Resume" to Icons.Default.CloudUpload,
+        "ATS Checker" to Icons.Default.QrCodeScanner,
+        "Community" to Icons.Default.Forum,
+        "Remote Jobs" to Icons.Default.Public
+    )
+
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        items(items) { (label, icon) ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .width(76.dp)
+                    .clickable { onActionClick(label) }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(icon, label, tint = Color(0xFFE91E63))
                 }
-                Text(label, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(
+                    text = label,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    modifier = Modifier.padding(top = 4.dp),
+                    lineHeight = 12.sp
+                )
             }
         }
     }
@@ -464,9 +520,9 @@ fun CategoryButton(label: String, bgColor: Color, modifier: Modifier, onClick: (
 @Composable
 fun TopCompaniesSection() {
     val companies = listOf(
-        CompanyData("Grab", "https://logo.clearbit.com/grab.com", Color.Green),
-        CompanyData("Maybank", "https://logo.clearbit.com/maybank.com", Color.Yellow),
-        CompanyData("Petronas", "https://logo.clearbit.com/petronas.com", Color.Cyan)
+        CompanyData("Grab", R.drawable.grab, Color.Green),
+        CompanyData("Maybank", R.drawable.maybank, Color.Yellow),
+        CompanyData("Petronas", R.drawable.petronas, Color.Cyan)
     )
     Column {
         Text("Top Companies", fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -474,7 +530,12 @@ fun TopCompaniesSection() {
             items(companies) { company ->
                 Card(modifier = Modifier.width(120.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        AsyncImage(model = company.logoUrl, contentDescription = null, modifier = Modifier.size(40.dp))
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = company.logoRes),
+                            contentDescription = "${company.name} Logo",
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(company.name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
@@ -485,6 +546,8 @@ fun TopCompaniesSection() {
 
 @Composable
 fun FeaturedJobsRow(recommendedJobs: List<JobEntity>, navController: NavController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -494,14 +557,17 @@ fun FeaturedJobsRow(recommendedJobs: List<JobEntity>, navController: NavControll
             Text(
                 text = "Suggested Jobs for You (KNN Match)",
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Color(0xFF2E7D32)
+                fontSize = 16.sp,
+                color = Color(0xFF2E7D32),
+                modifier = Modifier.weight(1f)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Top 5 Picks",
                 color = Color(0xFFE91E63),
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.wrapContentWidth()
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -515,10 +581,21 @@ fun FeaturedJobsRow(recommendedJobs: List<JobEntity>, navController: NavControll
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
                 items(recommendedJobs) { job ->
+                    val logoResourceId = remember(job.company) {
+                        val drawableFileName = when (job.company.lowercase().trim()) {
+                            "grab" -> "grab"
+                            "maybank" -> "maybank"
+                            "petronas" -> "petronas"
+                            "texas chicken" -> "texas"
+                            "uniqlo" -> "uniqlo"
+                            else -> "ic_default_company"
+                        }
+                        context.resources.getIdentifier(drawableFileName, "drawable", context.packageName)
+                    }
+
                     Card(
                         modifier = Modifier
                             .width(260.dp)
-                            // FIXED: Added click modifier to forward details dynamically to review checkout setup
                             .clickable {
                                 val encTitle = android.net.Uri.encode(job.title)
                                 val encCompany = android.net.Uri.encode(job.company)
@@ -538,11 +615,26 @@ fun FeaturedJobsRow(recommendedJobs: List<JobEntity>, navController: NavControll
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(
-                                    model = job.logoUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(4.dp))
-                                )
+                                if (logoResourceId != 0) {
+                                    androidx.compose.foundation.Image(
+                                        painter = androidx.compose.ui.res.painterResource(id = logoResourceId),
+                                        contentDescription = "${job.company} Logo",
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Business,
+                                        contentDescription = null,
+                                        tint = Color.Gray,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(Color(0xFFF5F5F5), RoundedCornerShape(4.dp))
+                                            .padding(4.dp)
+                                    )
+                                }
+
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(job.title, fontWeight = FontWeight.Bold, maxLines = 1, fontSize = 14.sp)

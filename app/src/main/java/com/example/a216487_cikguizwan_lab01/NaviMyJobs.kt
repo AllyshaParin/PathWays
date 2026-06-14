@@ -129,7 +129,7 @@ fun AppliedJobCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(appliedJob.jobTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(appliedJob.companyName, color = Color.Gray, fontSize = 14.sp)
+            //Text(appliedJob.companyName, color = Color.Gray, fontSize = 14.sp)
             Text(appliedJob.salaryRange, color = Color.Red, fontWeight = FontWeight.Bold)
             Text(appliedJob.location, color = Color.Gray, fontSize = 12.sp)
 

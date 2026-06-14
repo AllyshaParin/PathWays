@@ -29,7 +29,8 @@ data class UserProfileEntity(
     val workPermit: String,
     val age: Int,
     val educationLevel: Int, // 1=High School, 2=Diploma, 3=Bachelor, 4=Master/PhD
-    val locationCode: Int    // 1=Selangor/KL, 2=Johor, 3=Penang, 4=Others
+    val locationCode: Int,    // 1=Selangor/KL, 2=Johor, 3=Penang, 4=Others
+    val profilePicturePath: String? = null
 )
 
 @Entity(tableName = "jobs_table")
@@ -58,7 +59,7 @@ data class JobEntity(
 
 @Database(
     entities = [UserProfileEntity::class, JobEntity::class, JobApplicationEntity::class],
-    version = 2,
+    version = 4, // 👈 INCREMENTED to version 4 to wipe old empty structures and re-trigger seeding
     exportSchema = false
 )
 abstract class ProfileDatabase : RoomDatabase() {
@@ -82,6 +83,15 @@ abstract class ProfileDatabase : RoomDatabase() {
                             super.onCreate(db)
                             try {
                                 db.beginTransaction()
+
+                                // FIXED: Pre-seed default user profile record matching ID = 1 so updates have a row to target!
+                                db.execSQL(
+                                    """
+                                    INSERT INTO user_profile_table (id, name, phone, email, gender, dob, nationality, country, cityState, postcode, address, maritalStatus, workPermit, age, educationLevel, locationCode) 
+                                    VALUES (1, 'NURALLYSHA AYUNI BINTI SHAPARIN', '+60123456789', 'allysha@example.com', 'Female', '12/03/2004', 'Malaysian', 'Malaysia', 'Hulu Langat, Selangor', '43500', 'NO 9 JALAN 4/5 TAMAN SRI HANECO', 'Single', 'No, I don''t need', 22, 3, 1)
+                                    """.trimIndent()
+                                )
+
                                 getMockJobsList().forEach { job ->
                                     db.execSQL(
                                         """
@@ -116,14 +126,14 @@ abstract class ProfileDatabase : RoomDatabase() {
 
         private fun getMockJobsList(): List<JobEntity> {
             return listOf(
-                JobEntity(title = "IT Helpdesk Specialist", company = "Grab", salary = "MYR 3,500 - 4,500", logoUrl = "https://logo.clearbit.com/grab.com", requiredAge = 23, educationLevel = 3, locationCode = 1),
-                JobEntity(title = "F&B Supervisor", company = "Texas Chicken", salary = "MYR 3,200 - 4,500", logoUrl = "https://logo.clearbit.com/texaschickenmalaysia.com", requiredAge = 21, educationLevel = 1, locationCode = 1),
-                JobEntity(title = "Retail Assistant", company = "Uniqlo", salary = "MYR 2,100 - 2,800", logoUrl = "https://logo.clearbit.com/uniqlo.com", requiredAge = 20, educationLevel = 1, locationCode = 1),
-                JobEntity(title = "Mobile Software Engineer", company = "Grab", salary = "MYR 5,000 - 7,000", logoUrl = "https://logo.clearbit.com/grab.com", requiredAge = 25, educationLevel = 3, locationCode = 1),
-                JobEntity(title = "Bank Operations Executive", company = "Maybank", salary = "MYR 3,800 - 4,800", logoUrl = "https://logo.clearbit.com/maybank.com", requiredAge = 24, educationLevel = 3, locationCode = 1),
-                JobEntity(title = "Account Clerk", company = "Maybank", salary = "MYR 2,500 - 3,200", logoUrl = "https://logo.clearbit.com/maybank.com", requiredAge = 22, educationLevel = 2, locationCode = 2),
-                JobEntity(title = "Production Operator", company = "Petronas", salary = "MYR 2,000 - 2,800", logoUrl = "https://logo.clearbit.com/petronas.com", requiredAge = 19, educationLevel = 1, locationCode = 4),
-                JobEntity(title = "Data Analyst", company = "Petronas", salary = "MYR 4,500 - 6,000", logoUrl = "https://logo.clearbit.com/petronas.com", requiredAge = 26, educationLevel = 4, locationCode = 3)
+                JobEntity(title = "IT Helpdesk Specialist", company = "Grab", salary = "MYR 3,500 - 4,500", logoUrl = "ic_grab", requiredAge = 23, educationLevel = 3, locationCode = 1),
+                JobEntity(title = "F&B Supervisor", company = "Texas Chicken", salary = "MYR 3,200 - 4,500", logoUrl = "ic_default_company", requiredAge = 21, educationLevel = 1, locationCode = 1),
+                JobEntity(title = "Retail Assistant", company = "Uniqlo", salary = "MYR 2,100 - 2,800", logoUrl = "ic_default_company", requiredAge = 20, educationLevel = 1, locationCode = 1),
+                JobEntity(title = "Mobile Software Engineer", company = "Grab", salary = "MYR 5,000 - 7,000", logoUrl = "ic_grab", requiredAge = 25, educationLevel = 3, locationCode = 1),
+                JobEntity(title = "Bank Operations Executive", company = "Maybank", salary = "MYR 3,800 - 4,800", logoUrl = "ic_maybank", requiredAge = 24, educationLevel = 3, locationCode = 1),
+                JobEntity(title = "Account Clerk", company = "Maybank", salary = "MYR 2,500 - 3,200", logoUrl = "ic_maybank", requiredAge = 22, educationLevel = 2, locationCode = 2),
+                JobEntity(title = "Production Operator", company = "Petronas", salary = "MYR 2,000 - 2,800", logoUrl = "ic_petronas", requiredAge = 19, educationLevel = 1, locationCode = 4),
+                JobEntity(title = "Data Analyst", company = "Petronas", salary = "MYR 4,500 - 6,000", logoUrl = "ic_petronas", requiredAge = 26, educationLevel = 4, locationCode = 3)
             )
         }
     }

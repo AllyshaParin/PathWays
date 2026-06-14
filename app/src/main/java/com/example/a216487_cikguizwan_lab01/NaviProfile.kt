@@ -1,10 +1,13 @@
 package com.example.a216487_cikguizwan_lab01
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -19,7 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -28,14 +33,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.a216487_cikguizwan_lab01.ui.theme.A216487_CikguIzwan_Lab01Theme
+import java.io.File
 
 class NaviProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // --- FIX: Setup the same Room DAOs Factory so the ViewModel doesn't crash on launch ---
         val database = ProfileDatabase.getDatabase(applicationContext)
         val userDao = database.userProfileDao()
         val jobDao = database.jobDao()
@@ -60,8 +66,22 @@ class NaviProfileActivity : ComponentActivity() {
 
 @Composable
 fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewModel) {
-    // --- FIX: Observe userProfileState as a state stream from Room ---
+    val context = LocalContext.current
+    val isPreview = LocalInspectionMode.current
     val profileData by viewModel.userProfileState.collectAsStateWithLifecycle()
+
+    // Keep track of the temporary image file path across recompositions
+    var tempImagePath by remember { mutableStateOf<String?>(null) }
+
+    // Register hardware camera contract safely
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && !tempImagePath.isNullOrEmpty()) {
+            val updatedProfile = profileData.copy(profilePicturePath = tempImagePath)
+            viewModel.updateProfile(updatedProfile)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -78,28 +98,70 @@ fun ProfileScreenWithNav(navController: NavController, viewModel: ProfileViewMod
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(80.dp)) {
+
+                    // =====================================================================
+                    // UPDATED RESPONSIVE AVATAR CONTAINER WITH FIRM TOUCH WRAPPERS
+                    // =====================================================================
+                    Box(modifier = Modifier.size(85.dp)) {
                         Surface(
                             shape = CircleShape,
                             modifier = Modifier
                                 .size(80.dp)
+                                .align(Alignment.BottomStart)
                                 .border(2.dp, Color.White, CircleShape),
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.padding(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            if (!profileData.profilePicturePath.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = File(profileData.profilePicturePath!!),
+                                    contentDescription = "User Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Default Avatar",
+                                    modifier = Modifier.padding(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
 
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
+                        // FIXED: Changed Surface to Box and structured modifiers for solid hit responses
+                        Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(28.dp)
                                 .align(Alignment.TopEnd)
-                                .clickable { navController.navigate("edit_personal_details") } // Matches MainActivity route key
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.dp, Color.LightGray, CircleShape)
+                                .clickable {
+                                    try {
+                                        // 1. Generate local directory files and paths
+                                        val (file, uri) = StorageUtils.createImageFileUri(context)
+
+                                        // 2. Assign path string to application memory
+                                        tempImagePath = file.absolutePath
+
+                                        // 3. Fire the Android Camera Application view screen
+                                        cameraLauncher.launch(uri)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Trigger Camera",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
+                    // =====================================================================
+
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(

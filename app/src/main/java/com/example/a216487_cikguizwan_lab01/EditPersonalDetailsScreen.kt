@@ -1,29 +1,43 @@
 package com.example.a216487_cikguizwan_lab01
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileViewModel) {
-    // Collect the Room data flow safely into a state value that Compose can read
+    val isPreview = LocalInspectionMode.current
+    val context = LocalContext.current
     val profile by viewModel.userProfileState.collectAsStateWithLifecycle()
 
     // Interactive UI form states linked dynamically to Room database properties
     var name by remember(profile) { mutableStateOf(profile.name) }
-    // ALIGNED: Listens to the ViewModel text initialization block dynamically
     var aboutMeText by remember(viewModel.aboutMe.value) { mutableStateOf(viewModel.aboutMe.value) }
     var gender by remember(profile) { mutableStateOf(profile.gender) }
     var dob by remember(profile) { mutableStateOf(profile.dob) }
@@ -37,12 +51,28 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
     var selectedEduLevel by remember(profile) { mutableStateOf(profile.educationLevel) }
     var selectedLocCode by remember(profile) { mutableStateOf(profile.locationCode) }
 
+    // --- Profile Picture URI & File Management States ---
+    var capturedImageFile by remember { mutableStateOf<File?>(null) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var currentPhotoPath by remember(profile) { mutableStateOf(profile.profilePicturePath) }
+
     var genderExpanded by remember { mutableStateOf(false) }
     var eduMenuExpanded by remember { mutableStateOf(false) }
     var locMenuExpanded by remember { mutableStateOf(false) }
 
     val eduOptions = listOf("High School" to 1, "Diploma" to 2, "Bachelor's Degree" to 3, "Master's / PhD" to 4)
     val locOptions = listOf("Selangor / Kuala Lumpur" to 1, "Johor" to 2, "Pulau Pinang" to 3, "Other States" to 4)
+
+    // Hardware camera sensor callback contract with tool-preview guard handling
+    val cameraLauncher = if (isPreview) null else {
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicture()
+        ) { success ->
+            if (success && capturedImageFile != null) {
+                currentPhotoPath = capturedImageFile!!.absolutePath
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -59,9 +89,9 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
         bottomBar = {
             Button(
                 onClick = {
-                    viewModel.aboutMe.value = aboutMeText // Save About Me text safely to ViewModel state
+                    viewModel.aboutMe.value = aboutMeText
 
-                    // Create an updated copy of the Room Entity payload
+                    // Create an updated copy of the Room Entity payload including photo path
                     val entityPayload = profile.copy(
                         name = name,
                         gender = gender,
@@ -72,9 +102,10 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
                         address = address,
                         age = age.toIntOrNull() ?: profile.age,
                         educationLevel = selectedEduLevel,
-                        locationCode = selectedLocCode
+                        locationCode = selectedLocCode,
+                        profilePicturePath = currentPhotoPath // 👈 FIXED: Saves path to Room database record
                     )
-                    viewModel.updateProfile(entityPayload) // Save and trigger automatic KNN live-refresh
+                    viewModel.updateProfile(entityPayload)
                     navController.popBackStack()
                 },
                 modifier = Modifier
@@ -93,9 +124,11 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // =====================================================================
+            // TEXT INPUT FORM FIELDS SECTION
+            // =====================================================================
             Text("Personal Details", fontWeight = FontWeight.Bold, color = Color.DarkGray)
 
-            // --- About Me Field ---
             OutlinedTextField(
                 value = aboutMeText,
                 onValueChange = { aboutMeText = it },
@@ -115,7 +148,6 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
                     .padding(vertical = 8.dp)
             )
 
-            // Split Row: Gender Selection and Age Number Vector Input
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Box(modifier = Modifier.weight(1f)) {
                     ExposedDropdownMenuBox(
@@ -165,7 +197,6 @@ fun EditPersonalDetailsScreen(navController: NavController, viewModel: ProfileVi
                     .padding(vertical = 8.dp)
             )
 
-            // --- KNN Quantitative Dropdowns ---
             Spacer(modifier = Modifier.height(4.dp))
             ExposedDropdownMenuBox(
                 expanded = eduMenuExpanded,
